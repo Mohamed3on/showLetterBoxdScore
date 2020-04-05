@@ -6,7 +6,7 @@
   "author": "Mohamed Oun",
   "content_scripts": [
     {
-      "matches": ["*://*.imdb.com/title/*/ratings"],
+      "matches": ["*://*.imdb.com/title/*/ratings?ref_=tt_ov_rt", "*://*.imdb.com/title/*/ratings"],
       "js": ["content-script.js"],
       "run_at": "document_end"
     }
