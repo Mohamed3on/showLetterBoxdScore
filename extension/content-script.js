@@ -5,7 +5,7 @@
 
 const ratings = Array.from(document.getElementsByClassName('leftAligned'))
   .slice(1, 11)
-  .map((element) => parseInt(element.textContent.replace(',', '')));
+  .map((element) => parseInt(element.textContent.replace(/,/g, '')));
 
 const score = ratings[0] + ratings[1] - ratings[9] - ratings[8];
 
