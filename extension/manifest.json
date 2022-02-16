@@ -6,7 +6,12 @@
   "author": "Mohamed Oun",
   "content_scripts": [
     {
-      "matches": ["*://*.imdb.com/title/*/ratings?ref_=tt_ov_rt", "*://*.imdb.com/title/*/ratings"],
+      "matches": [
+        "*://*.imdb.com/title/*/ratings/*",
+        "*://*.imdb.com/title/*/ratings?ref_=tt_ov_rt",
+        "*://*.imdb.com/title/*/ratings",
+        "https://www.imdb.com/title/tt10618286/ratings/?mode=desktop&rtm=1&ref_=tt_ov_rt"
+      ],
       "js": ["content-script.js"],
       "run_at": "document_end"
     }
