@@ -1,17 +1,12 @@
 {
   "manifest_version": 2,
-  "name": "Show IMDb Movie score",
-  "version": "0.11",
-  "description": "Shows custom score for IMDb movies",
+  "name": "Show Letterboxd Movie score",
+  "version": "0.1",
+  "description": "Shows custom score for LetterBoxd movies",
   "author": "Mohamed Oun",
   "content_scripts": [
     {
-      "matches": [
-        "*://*.imdb.com/title/*/ratings/*",
-        "*://*.imdb.com/title/*/ratings?ref_=tt_ov_rt",
-        "*://*.imdb.com/title/*/ratings",
-        "https://www.imdb.com/title/tt10618286/ratings/?mode=desktop&rtm=1&ref_=tt_ov_rt"
-      ],
+      "matches": ["*://*.letterboxd.com/film/*/"],
       "js": ["content-script.js"],
       "run_at": "document_end"
     }
