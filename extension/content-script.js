@@ -2,29 +2,106 @@ const addCommas = (x) => {
   return x.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
+async function fetchWithRetry(url, maxRetries = 5, retryDelay = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status code ${response.status}`);
+      }
+
+      return response;
+    } catch (error) {
+      console.warn(`Fetch attempt ${attempt} failed: ${error.message}`);
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelay * 2 ** (attempt - 1)));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
 (Element.prototype.appendAfter = function (element) {
   element.parentNode.insertBefore(this, element.nextSibling);
 }),
   false;
 
-const run = (ratings) => {
+const getScoreDetails = ({ totalRatings, fiveStars, oneStars }) => {
+  const absoluteScore = fiveStars - oneStars;
+  const ratio = absoluteScore / totalRatings;
+  const calculatedScore = Math.round(absoluteScore * ratio);
+  return { calculatedScore, ratio, absoluteScore };
+};
+
+async function getIMDBRatingDetails() {
+  try {
+    const imdbLink = document.querySelector('a[href*="imdb.com/title"]');
+    const imdbURL = imdbLink?.getAttribute('href');
+
+    if (!imdbURL) {
+      throw new Error('IMDb link not found');
+    }
+
+    const imdbRatingsDistributionURL = imdbURL.replace('maindetails', 'ratings');
+
+    const corsProxyURL = 'https://vercel-cors-proxy-nine.vercel.app/api?url=';
+    const encodedImdbURL = encodeURIComponent(imdbRatingsDistributionURL);
+    const response = await fetchWithRetry(corsProxyURL + encodedImdbURL);
+
+    const imdbRatingsPage = new DOMParser().parseFromString(await response.text(), 'text/html');
+
+    const ratings = Array.from(imdbRatingsPage.querySelectorAll('.leftAligned'))
+      .slice(1, 11)
+      .map((element) => parseInt(element.textContent.replace(/,/g, '') || '0'))
+      .reverse();
+
+    const totalRatings = ratings.reduce((a, b) => a + b, 0);
+
+    const { absoluteScore } = getScoreDetails({
+      totalRatings,
+      fiveStars: ratings[8] + ratings[9],
+      oneStars: ratings[0] + ratings[1],
+    });
+
+    return {
+      imdbScore: absoluteScore,
+      imdbTotalRatings: totalRatings,
+    };
+  } catch (e) {
+    console.error(`Error getting IMDB rating details for movie: ${e}`);
+    return {
+      imdbScore: 0,
+      imdbTotalRatings: 0,
+      imdbLink: '',
+    };
+  }
+}
+
+const run = async (ratings) => {
+  const { imdbScore, imdbTotalRatings, imdbLink } = await getIMDBRatingDetails();
+
   const absoluteScore = ratings[9] + ratings[8] - ratings[0] - ratings[1];
 
-  const sum = ratings.reduce((a, b) => a + b, 0);
-  const ratio = absoluteScore / sum;
+  const letterBoxdTotalRatings = ratings.reduce((a, b) => a + b, 0);
 
-  const calculatedScore = Math.round(absoluteScore * ratio);
+  const ratio = (absoluteScore + imdbScore) / (letterBoxdTotalRatings + imdbTotalRatings);
+  const calculatedOverallScore = Math.round((absoluteScore + imdbScore) * ratio);
 
   const ScoreElement = document.createElement('div');
-  ScoreElement.innerHTML = `${addCommas(String(calculatedScore))} (${Math.round(ratio * 100)}%)`;
+  ScoreElement.innerHTML = `${addCommas(String(calculatedOverallScore))} (${Math.round(
+    ratio * 100
+  )}%)`;
 
   const Headline = document.querySelector('.ratings-histogram-chart  h2 a');
   ScoreElement.appendAfter(Headline);
 };
 
 let hasRun = false;
-var observer = new MutationObserver(function (mutations) {
-  mutations.forEach(function (mutation) {
+var observer = new MutationObserver(async function (mutations) {
+  mutations.forEach(async function (mutation) {
     if (!mutation.addedNodes) {
       return;
     }
@@ -35,8 +112,8 @@ var observer = new MutationObserver(function (mutations) {
       const ratings = Array.from(ratingNodes).map((element) =>
         parseInt(element.textContent.replace(/,/g, '').split('&')[0])
       );
-      run(ratings);
       hasRun = true;
+      await run(ratings);
     }
   });
 });
