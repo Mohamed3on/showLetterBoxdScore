@@ -53,12 +53,17 @@ async function getIMDBRatingDetails() {
 
     const imdbRatingsPage = new DOMParser().parseFromString(await response.text(), 'text/html');
 
-    const ratings = Array.from(imdbRatingsPage.querySelectorAll('.leftAligned'))
-      .slice(1, 11)
-      .map((element) => parseInt(element.textContent.replace(/,/g, '') || '0'))
-      .reverse();
+    const nextDataScript = imdbRatingsPage.querySelector('script#__NEXT_DATA__');
+    const nextDataJson = nextDataScript?.textContent || '{}';
+    const nextData = JSON.parse(nextDataJson);
+    const histogramData = nextData?.props?.pageProps?.contentData?.histogramData;
 
-    const totalRatings = ratings.reduce((a, b) => a + b, 0);
+    const ratingArr = histogramData?.histogramValues;
+    const sortedArr = ratingArr.sort((a, b) => a.rating - b.rating);
+
+    const ratings = sortedArr?.map((rating) => rating?.voteCount || 0);
+
+    const totalRatings = histogramData?.totalVoteCount || 0;
 
     const { absoluteScore } = getScoreDetails({
       totalRatings,
