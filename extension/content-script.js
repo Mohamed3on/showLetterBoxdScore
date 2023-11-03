@@ -1,5 +1,51 @@
+const RECENT_RATINGS = { totalNumberOfRatings: 0, scoreAbsolute: 0, scorePercentage: 0 };
 const addCommas = (x) => {
   return x.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+function tallyRatings() {
+  const ratings = document.querySelectorAll('span.rating');
+
+  ratings.forEach((rating) => {
+    // Extract the class list and find the class that starts with 'rated-'
+    const ratingClass = [...rating.classList].find((className) => className.startsWith('rated-'));
+    if (ratingClass) {
+      // Extract the numeric value from the matched class
+      const ratingValue = parseInt(ratingClass.split('-')[1], 10);
+      RECENT_RATINGS.totalNumberOfRatings += 1;
+      if (ratingValue > 8) {
+        RECENT_RATINGS.scoreAbsolute += 1;
+      }
+      if (ratingValue <= 2) {
+        RECENT_RATINGS.scoreAbsolute -= 1;
+      }
+    }
+  });
+
+  return RECENT_RATINGS;
+}
+
+const getRecentRatingsSummary = async () => {
+  const currentURL = window.location.href;
+  const numberOfPagesToParse = 5;
+  const parser = new DOMParser();
+  for (let i = 1; i <= numberOfPagesToParse; i++) {
+    const recentRatings = await fetch(`${currentURL}/reviews/by/added/page/${i}`, {
+      body: null,
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'include',
+    });
+    const recentRatingsHTML = await recentRatings.text();
+    const document = parser.parseFromString(recentRatingsHTML, 'text/html');
+    tallyRatings(document);
+  }
+
+  RECENT_RATINGS.scorePercentage = Math.round(
+    (RECENT_RATINGS.scoreAbsolute / RECENT_RATINGS.totalNumberOfRatings) * 100
+  );
+
+  return RECENT_RATINGS;
 };
 
 async function fetchWithRetry(url, maxRetries = 5, retryDelay = 1000) {
@@ -86,7 +132,7 @@ async function getIMDBRatingDetails() {
 }
 
 const run = async (ratings) => {
-  const { imdbScore, imdbTotalRatings, imdbLink } = await getIMDBRatingDetails();
+  const { imdbScore, imdbTotalRatings } = await getIMDBRatingDetails();
 
   const absoluteScore = ratings[9] + ratings[8] - ratings[0] - ratings[1];
 
@@ -95,10 +141,12 @@ const run = async (ratings) => {
   const ratio = (absoluteScore + imdbScore) / (letterBoxdTotalRatings + imdbTotalRatings);
   const calculatedOverallScore = Math.round((absoluteScore + imdbScore) * ratio);
 
+  const recentRatingPercentage = (await getRecentRatingsSummary()).scorePercentage;
   const ScoreElement = document.createElement('div');
   ScoreElement.innerHTML = `${addCommas(String(calculatedOverallScore))} (${Math.round(
     ratio * 100
-  )}%)`;
+  )}%), recent: (${recentRatingPercentage}%)`;
+  ScoreElement.style = 'margin-top: 0.5rem;';
 
   const Headline = document.querySelector('.ratings-histogram-chart  h2 a');
   ScoreElement.appendAfter(Headline);
