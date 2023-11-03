@@ -27,7 +27,7 @@ function tallyRatings() {
 
 const getRecentRatingsSummary = async () => {
   const currentURL = window.location.href;
-  const numberOfPagesToParse = 5;
+  const numberOfPagesToParse = 10;
   const parser = new DOMParser();
   for (let i = 1; i <= numberOfPagesToParse; i++) {
     const recentRatings = await fetch(`${currentURL}/reviews/by/added/page/${i}`, {
@@ -141,15 +141,21 @@ const run = async (ratings) => {
   const ratio = (absoluteScore + imdbScore) / (letterBoxdTotalRatings + imdbTotalRatings);
   const calculatedOverallScore = Math.round((absoluteScore + imdbScore) * ratio);
 
-  const recentRatingPercentage = (await getRecentRatingsSummary()).scorePercentage;
   const ScoreElement = document.createElement('div');
   ScoreElement.innerHTML = `${addCommas(String(calculatedOverallScore))} (${Math.round(
     ratio * 100
-  )}%), recent: (${recentRatingPercentage}%)`;
+  )}%)`;
   ScoreElement.style = 'margin-top: 0.5rem;';
 
   const Headline = document.querySelector('.ratings-histogram-chart  h2 a');
   ScoreElement.appendAfter(Headline);
+
+  const recentRatingPercentage = (await getRecentRatingsSummary()).scorePercentage;
+
+  const RecentScoreElement = document.createElement('div');
+  RecentScoreElement.innerHTML = `Recent: (${recentRatingPercentage}%)`;
+  RecentScoreElement.style = 'margin-top: 0.5rem;';
+  RecentScoreElement.appendAfter(ScoreElement);
 };
 
 let hasRun = false;
