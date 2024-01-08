@@ -27,10 +27,11 @@ function tallyRatings() {
 
 const getRecentRatingsSummary = async () => {
   const currentURL = window.location.href;
-  const numberOfPagesToParse = 10;
+  const numberOfPagesToParse = 15;
+
   const parser = new DOMParser();
   for (let i = 1; i <= numberOfPagesToParse; i++) {
-    const recentRatings = await fetch(`${currentURL}/reviews/by/added/page/${i}`, {
+    const recentRatings = await fetch(`${currentURL}reviews/by/added/page/${i}/`, {
       body: null,
       method: 'GET',
       mode: 'cors',
