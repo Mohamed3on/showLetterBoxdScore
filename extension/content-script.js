@@ -153,10 +153,14 @@ const run = async (ratings) => {
 
   const recentRatingPercentage = (await getRecentRatingsSummary()).scorePercentage;
 
-  const RecentScoreElement = document.createElement('div');
-  RecentScoreElement.innerHTML = `Recent: (${recentRatingPercentage}%)`;
-  RecentScoreElement.style = 'margin-top: 0.5rem;';
-  RecentScoreElement.appendAfter(ScoreElement);
+  const trendingScore = Math.round((calculatedOverallScore * recentRatingPercentage) / 100);
+  const TrendingScoreElement = document.createElement('div');
+  TrendingScoreElement.innerHTML = `Trending Score: ${addCommas(
+    String(trendingScore)
+  )}, Recent Reviews: ${recentRatingPercentage}% `;
+  TrendingScoreElement.style = 'margin-top: 0.5rem; font-size:16px; font-weight: bold; ';
+
+  TrendingScoreElement.appendAfter(document.querySelector('.review.body-text'));
 };
 
 let hasRun = false;
