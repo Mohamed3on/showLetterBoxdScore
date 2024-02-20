@@ -173,8 +173,8 @@ var observer = new MutationObserver(async function (mutations) {
     const ratingNodes = document.getElementsByClassName('rating-histogram-bar');
 
     if (ratingNodes.length && !hasRun) {
-      const ratings = Array.from(ratingNodes).map((element) =>
-        parseInt(element.textContent.replace(/,/g, '').split('&')[0])
+      const ratings = Array.from(ratingNodes).map(
+        (element) => parseInt(element.textContent.replace(/,/g, '').split('&')[0]) || 0
       );
       hasRun = true;
       await run(ratings);
