@@ -30,17 +30,25 @@ const getRecentRatingsSummary = async () => {
   const numberOfPagesToParse = 15;
 
   const parser = new DOMParser();
+  const fetchPromises = [];
+
   for (let i = 1; i <= numberOfPagesToParse; i++) {
-    const recentRatings = await fetch(`${currentURL}reviews/by/added/page/${i}/`, {
-      body: null,
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'include',
-    });
-    const recentRatingsHTML = await recentRatings.text();
+    fetchPromises.push(
+      fetch(`${currentURL}reviews/by/added/page/${i}/`, {
+        body: null,
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'include',
+      }).then((response) => response.text())
+    );
+  }
+
+  const recentRatingsHTMLs = await Promise.all(fetchPromises);
+
+  recentRatingsHTMLs.forEach((recentRatingsHTML) => {
     const document = parser.parseFromString(recentRatingsHTML, 'text/html');
     tallyRatings(document);
-  }
+  });
 
   RECENT_RATINGS.scorePercentage = Math.round(
     (RECENT_RATINGS.scoreAbsolute / RECENT_RATINGS.totalNumberOfRatings) * 100
