@@ -1,31 +1,29 @@
-const RECENT_RATINGS = { totalNumberOfRatings: 0, scoreAbsolute: 0, scorePercentage: 0 };
 const addCommas = (x) => {
   return x.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
-function tallyRatings() {
+function tallyRatings(document, recentRatings) {
   const ratings = document.querySelectorAll('span.rating');
 
   ratings.forEach((rating) => {
-    // Extract the class list and find the class that starts with 'rated-'
     const ratingClass = [...rating.classList].find((className) => className.startsWith('rated-'));
     if (ratingClass) {
-      // Extract the numeric value from the matched class
       const ratingValue = parseInt(ratingClass.split('-')[1], 10);
-      RECENT_RATINGS.totalNumberOfRatings += 1;
+      recentRatings.totalNumberOfRatings += 1;
       if (ratingValue > 8) {
-        RECENT_RATINGS.scoreAbsolute += 1;
+        recentRatings.scoreAbsolute += 1;
       }
       if (ratingValue <= 2) {
-        RECENT_RATINGS.scoreAbsolute -= 1;
+        recentRatings.scoreAbsolute -= 1;
       }
     }
   });
 
-  return RECENT_RATINGS;
+  return recentRatings;
 }
 
 const getRecentRatingsSummary = async () => {
+  const recentRatings = { totalNumberOfRatings: 0, scoreAbsolute: 0, scorePercentage: 0 };
   const currentURL = window.location.href;
   const numberOfPagesToParse = 15;
 
@@ -47,14 +45,14 @@ const getRecentRatingsSummary = async () => {
 
   recentRatingsHTMLs.forEach((recentRatingsHTML) => {
     const document = parser.parseFromString(recentRatingsHTML, 'text/html');
-    tallyRatings(document);
+    tallyRatings(document, recentRatings);
   });
 
-  RECENT_RATINGS.scorePercentage = Math.round(
-    (RECENT_RATINGS.scoreAbsolute / RECENT_RATINGS.totalNumberOfRatings) * 100
+  recentRatings.scorePercentage = Math.round(
+    (recentRatings.scoreAbsolute / recentRatings.totalNumberOfRatings) * 100
   );
 
-  return RECENT_RATINGS;
+  return recentRatings;
 };
 
 async function fetchWithRetry(url, maxRetries = 5, retryDelay = 1000) {
@@ -171,26 +169,39 @@ const run = async (ratings) => {
   TrendingScoreElement.appendAfter(document.querySelector('.review.body-text'));
 };
 
-let hasRun = false;
-var observer = new MutationObserver(async function (mutations) {
-  mutations.forEach(async function (mutation) {
-    if (!mutation.addedNodes) {
-      return;
-    }
+let observer;
 
-    const ratingNodes = document.getElementsByClassName('rating-histogram-bar');
+function initObserver() {
+  if (observer) {
+    observer.disconnect();
+  }
 
-    if (ratingNodes.length && !hasRun) {
-      const ratings = Array.from(ratingNodes).map(
-        (element) => parseInt(element.textContent.replace(/,/g, '').split('&')[0]) || 0
-      );
-      hasRun = true;
-      await run(ratings);
+  observer = new MutationObserver(async function (mutations) {
+    for (const mutation of mutations) {
+      if (!mutation.addedNodes) continue;
+
+      const ratingNodes = document.getElementsByClassName('rating-histogram-bar');
+
+      if (ratingNodes.length) {
+        observer.disconnect();
+        const ratings = Array.from(ratingNodes).map(
+          (element) => parseInt(element.textContent.replace(/,/g, '').split('&')[0]) || 0
+        );
+        try {
+          await run(ratings);
+        } catch (error) {
+          console.error('Error in run function:', error);
+        }
+        break;
+      }
     }
   });
-});
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+// Call initObserver when the script loads
+initObserver();
