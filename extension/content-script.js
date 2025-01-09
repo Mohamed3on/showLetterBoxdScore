@@ -92,31 +92,37 @@ const getScoreDetails = ({ totalRatings, fiveStars, oneStars }) => {
 async function getIMDBRatingDetails() {
   try {
     const imdbLink = document.querySelector('a[href*="imdb.com/title"]');
-    const imdbURL = imdbLink?.getAttribute('href');
 
-    if (!imdbURL) {
-      throw new Error('IMDb link not found');
+    if (!imdbLink?.href) {
+      console.warn('IMDb link not found, defaulting to zero scores');
+      return { imdbScore: 0, imdbTotalRatings: 0 };
     }
 
-    const imdbRatingsDistributionURL = imdbURL.replace('maindetails', 'ratings');
-
+    const imdbRatingsDistributionURL = imdbLink.href.replace('maindetails', 'ratings');
     const corsProxyURL = 'https://vercel-cors-proxy-nine.vercel.app/api?url=';
     const encodedImdbURL = encodeURIComponent(imdbRatingsDistributionURL);
-    const response = await fetchWithRetry(corsProxyURL + encodedImdbURL);
 
+    const response = await fetchWithRetry(corsProxyURL + encodedImdbURL);
     const imdbRatingsPage = new DOMParser().parseFromString(await response.text(), 'text/html');
 
     const nextDataScript = imdbRatingsPage.querySelector('script#__NEXT_DATA__');
-    const nextDataJson = nextDataScript?.textContent || '{}';
-    const nextData = JSON.parse(nextDataJson);
+    if (!nextDataScript?.textContent) {
+      console.warn('IMDb ratings data not found, defaulting to zero scores');
+      return { imdbScore: 0, imdbTotalRatings: 0 };
+    }
+
+    const nextData = JSON.parse(nextDataScript.textContent);
     const histogramData = nextData?.props?.pageProps?.contentData?.histogramData;
 
-    const ratingArr = histogramData?.histogramValues;
+    if (!histogramData?.histogramValues) {
+      console.warn('IMDb histogram data not found, defaulting to zero scores');
+      return { imdbScore: 0, imdbTotalRatings: 0 };
+    }
+
+    const ratingArr = histogramData.histogramValues;
     const sortedArr = ratingArr.sort((a, b) => a.rating - b.rating);
-
-    const ratings = sortedArr?.map((rating) => rating?.voteCount || 0);
-
-    const totalRatings = histogramData?.totalVoteCount || 0;
+    const ratings = sortedArr.map((rating) => rating?.voteCount || 0);
+    const totalRatings = histogramData.totalVoteCount || 0;
 
     const { absoluteScore } = getScoreDetails({
       totalRatings,
@@ -128,12 +134,11 @@ async function getIMDBRatingDetails() {
       imdbScore: absoluteScore,
       imdbTotalRatings: totalRatings,
     };
-  } catch (e) {
-    console.error(`Error getting IMDB rating details for movie: ${e}`);
+  } catch (error) {
+    console.error('Error fetching IMDb ratings:', error.message);
     return {
       imdbScore: 0,
       imdbTotalRatings: 0,
-      imdbLink: '',
     };
   }
 }
