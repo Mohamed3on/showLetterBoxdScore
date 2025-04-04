@@ -1,9 +1,10 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Show Letterboxd Movie score",
   "version": "0.1",
   "description": "Shows custom score for LetterBoxd movies",
   "author": "Mohamed Oun",
+  "host_permissions": ["*://*.letterboxd.com/film/*/"],
   "content_scripts": [
     {
       "matches": ["*://*.letterboxd.com/film/*/"],
